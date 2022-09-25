@@ -6,8 +6,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 
 import javax.persistence.LockModeType;
+import javax.transaction.Transactional;
 import java.util.Optional;
 
+@Transactional
 public interface UserRepository extends CrudRepository<Person, Long> {
 
     /*
