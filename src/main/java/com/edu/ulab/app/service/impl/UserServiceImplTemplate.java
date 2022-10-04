@@ -14,7 +14,6 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 
 import java.sql.PreparedStatement;
-import java.util.List;
 import java.util.Objects;
 
 @Slf4j
@@ -39,13 +38,23 @@ public class UserServiceImplTemplate implements UserService {
                 }, keyHolder);
 
         userDto.setId(Objects.requireNonNull(keyHolder.getKey()).longValue());
+        log.info("Saved user: {}", userDto);
         return userDto;
     }
 
     @Override
     public UserDto updateUser(UserDto userDto) {
         final String UPDATE_SQL = "UPDATE PERSON SET FULL_NAME = ?, TITLE = ?, AGE = ? WHERE id = ?";
-        jdbcTemplate.update(UPDATE_SQL, userDto.getFullName(), userDto.getTitle(), userDto.getAge(), userDto.getId());
+        jdbcTemplate.update(
+                connection -> {
+                    PreparedStatement ps = connection.prepareStatement(UPDATE_SQL, new String[]{"id"});
+                    ps.setString(1, userDto.getFullName());
+                    ps.setString(2, userDto.getTitle());
+                    ps.setLong(3, userDto.getAge());
+                    ps.setLong(4, userDto.getId());
+                    return ps;
+                });
+        log.info("Update user: {}", userDto);
 
         return userDto;
     }
@@ -53,17 +62,28 @@ public class UserServiceImplTemplate implements UserService {
     @Override
     public UserDto getUserById(Long id) {
         final String GET_SQL = "SELECT * FROM PERSON WHERE id = ?";
-        List<Person> query = jdbcTemplate.query(GET_SQL, new PersonJdbcMapper(), id);
-        if (query.size() == 0) {
-            throw new NotFoundException("No user with id: " + id);
-        }
+        Person person = jdbcTemplate.query(
+                        connection -> {
+                            PreparedStatement ps = connection.prepareStatement(GET_SQL, new String[]{"id"});
+                            ps.setLong(1, id);
+                            return ps;
+                        }, new PersonJdbcMapper()).stream()
+                .findAny()
+                .orElseThrow(() -> new NotFoundException("No user with id: " + id));
+        log.info("User found with id : {}", id);
 
-        return userMapper.personToUserDto(query.get(0));
+        return userMapper.personToUserDto(person);
     }
 
     @Override
     public void deleteUserById(Long id) {
         final String DELETE_SQL = "DELETE FROM PERSON WHERE id = ?";
-        jdbcTemplate.update(DELETE_SQL, id);
+        jdbcTemplate.update(
+                connection -> {
+                    PreparedStatement ps = connection.prepareStatement(DELETE_SQL, new String[]{"id"});
+                    ps.setLong(1, id);
+                    return ps;
+                });
+        log.info("Delete user with id: {}", id);
     }
 }
