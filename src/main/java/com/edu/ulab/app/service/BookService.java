@@ -11,4 +11,6 @@ public interface BookService {
     BookDto getBookById(Long id);
 
     void deleteBookById(Long id);
+
+    Iterable<BookDto> getAllBooks();
 }
